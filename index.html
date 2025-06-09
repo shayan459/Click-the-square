@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>click the square – Highscore sichtbar</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      text-align: center;
+      background: #222;
+      color: white;
+    }
+
+    #gameArea {
+      position: relative;
+      width: 600px;
+      height: 400px;
+      margin: 20px auto;
+      background: #333;
+      border: 2px solid #fff;
+      overflow: hidden;
+    }
+
+    #target {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background: #4caf50;
+      cursor: pointer;
+    }
+
+    #score, #timer {
+      font-size: 24px;
+      margin-top: 10px;
+    }
+
+    #gameOver {
+      display: none;
+      font-size: 32px;
+      color: #f44336;
+      margin-top: 20px;
+    }
+
+    #clickRate {
+      display: none;
+      font-size: 20px;
+      color: #ffc107;
+      margin-top: 10px;
+    }
+
+    #restartBtn {
+      display: none;
+      font-size: 20px;
+      padding: 10px 20px;
+      margin-top: 10px;
+      cursor: pointer;
+      background-color: #4caf50;
+      border: none;
+      color: white;
+      border-radius: 8px;
+    }
+
+    #timeSelect {
+      font-size: 16px;
+      margin-top: 10px;
+    }
+
+    #highscorePersistent {
+      font-size: 18px;
+      margin-top: 20px;
+      color: #00e676;
+    }
+  </style>
+</head>
+<body>
+
+<h1>CLICK THE SQUARE </h1>
+
+<div>
+  Zeit wählen: 
+  <select id="timeSelect">
+    <option value="15">15 Sekunden</option>
+    <option value="30" selected>30 Sekunden</option>
+    <option value="60">60 Sekunden</option>
+  </select>
+</div>
+
+<div id="score">Punkte: 0</div>
+<div id="timer">Zeit: --</div>
+
+<div id="gameArea">
+  <div id="target"></div>
+</div>
+
+<div id="gameOver">
+  ⏱️ Zeit vorbei! Dein Ergebnis: <span id="finalScore"></span> Punkte
+</div>
+
+<div id="clickRate"></div>
+
+<div id="highscorePersistent">🏆 Aktueller Highscore: -- Klicks/Sekunde</div>
+
+<button id="restartBtn">Neu starten</button>
+
+<audio id="clickSound">
+  <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_f8c1d9994c.mp3?filename=click-124467.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+  const target = document.getElementById('target');
+  const gameArea = document.getElementById('gameArea');
+  const scoreDisplay = document.getElementById('score');
+  const timerDisplay = document.getElementById('timer');
+  const gameOverText = document.getElementById('gameOver');
+  const finalScore = document.getElementById('finalScore');
+  const restartBtn = document.getElementById('restartBtn');
+  const clickSound = document.getElementById('clickSound');
+  const clickRateDisplay = document.getElementById('clickRate');
+  const highscorePersistent = document.getElementById('highscorePersistent');
+  const timeSelect = document.getElementById('timeSelect');
+
+  let score = 0;
+  let timeLeft;
+  let timer;
+  let gameDuration = 30;
+  let gameActive = false;
+  let timerStarted = false;
+
+  function moveTarget() {
+    const areaWidth = gameArea.clientWidth - 50;
+    const areaHeight = gameArea.clientHeight - 50;
+    const x = Math.random() * areaWidth;
+    const y = Math.random() * areaHeight;
+    target.style.left = x + 'px';
+    target.style.top = y + 'px';
+  }
+
+  function updateTimer() {
+    timeLeft--;
+    timerDisplay.textContent = 'Zeit: ' + timeLeft;
+
+    if (timeLeft <= 0) {
+      endGame();
+    }
+  }
+
+  function startTimer() {
+    timerStarted = true;
+    gameActive = true;
+    timeLeft = gameDuration;
+    timerDisplay.textContent = 'Zeit: ' + timeLeft;
+    timer = setInterval(updateTimer, 1000);
+  }
+
+  function updateHighscoreDisplay(rate) {
+    const savedHighscore = parseFloat(localStorage.getItem('clickHighscore')) || 0;
+    if (rate > savedHighscore) {
+      localStorage.setItem('clickHighscore', rate);
+    }
+    highscorePersistent.textContent = `🏆 Aktueller Highscore: ${Math.max(rate, savedHighscore).toFixed(2)} Klicks/Sekunde`;
+  }
+
+  function endGame() {
+    clearInterval(timer);
+    gameActive = false;
+    target.style.display = 'none';
+    gameOverText.style.display = 'block';
+    restartBtn.style.display = 'inline-block';
+    finalScore.textContent = score;
+
+    const clickRate = (score / gameDuration).toFixed(2);
+    clickRateDisplay.textContent = `⚡ Klickgeschwindigkeit: ${clickRate} Klicks/Sekunde`;
+    clickRateDisplay.style.display = 'block';
+
+    updateHighscoreDisplay(parseFloat(clickRate));
+  }
+
+  function resetGame() {
+    clearInterval(timer);
+    score = 0;
+    timerStarted = false;
+    gameActive = false;
+    gameDuration = parseInt(timeSelect.value);
+    scoreDisplay.textContent = 'Punkte: 0';
+    timerDisplay.textContent = 'Zeit: --';
+    gameOverText.style.display = 'none';
+    clickRateDisplay.style.display = 'none';
+    restartBtn.style.display = 'none';
+    target.style.display = 'block';
+    moveTarget();
+
+    const savedHighscore = parseFloat(localStorage.getItem('clickHighscore')) || 0;
+    highscorePersistent.textContent = `🏆 Aktueller Highscore: ${savedHighscore.toFixed(2)} Klicks/Sekunde`;
+  }
+
+  target.addEventListener('click', () => {
+    if (!timerStarted) {
+      startTimer();
+    }
+
+    if (!gameActive) return;
+
+    score++;
+    scoreDisplay.textContent = 'Punkte: ' + score;
+    moveTarget();
+    clickSound.currentTime = 0;
+    clickSound.play();
+  });
+
+  restartBtn.addEventListener('click', () => {
+    resetGame();
+  });
+
+  timeSelect.addEventListener('change', () => {
+    resetGame();
+  });
+
+  // Spiel vorbereiten
+  resetGame();
+</script>
+
+</body>
+</html>
